@@ -9,7 +9,7 @@ import torch.nn as nn
 from torchvision import models
 
 class SiameseNetwork(nn.Module):
-     """
+    """
     Siamese CNN using EfficientNet-B0 as backbone.
 
     Takes a pair of images and outputs a similarity score (0-1). Produces embeddings
