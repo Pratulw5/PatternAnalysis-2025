@@ -33,7 +33,18 @@ transform = transforms.Compose([
 
 
 class SiameseMelanomaDataset(Dataset):
-    """Creates weighted/upsampled pairs of images for Siamese training."""
+    """
+    Dataset for Siamese network training with benign/malignant image pairs.
+
+    Each item returns a pair of images and a label (0 = similar, 1 = dissimilar),
+    with malignant images upsampled to balance the dataset.
+
+    Args:
+        benign_paths (list): Paths to benign images.
+        malignant_paths (list): Paths to malignant images.
+        transform (callable, optional): Image transformations.
+        num_pairs (int): Number of pairs to generate.
+    """
     def __init__(self, benign_paths, malignant_paths, transform=None, num_pairs=10000):
         self.transform = transform
         self.benign_paths = benign_paths
