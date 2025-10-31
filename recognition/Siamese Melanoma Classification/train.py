@@ -16,7 +16,7 @@ class SiameseTrainer:
     """
     Trainer class for SiameseNetwork on melanoma dataset.
 
-    Handles dataset creation, dataloaders, weight initialization, and contrastive loss.
+    Handles dataset creation, dataloaders, weight initialization.
     """
     def __init__(self, train_benign, train_malignant, test_benign, test_malignant,
                  transform=None, embedding_dim=256, freeze_base=True, fine_tune_from_block=2,
@@ -61,19 +61,11 @@ class SiameseTrainer:
             values = self.rng.normal(loc=0.5, scale=1e-2, size=tensor.shape).astype(np.float32)
             tensor.copy_(torch.from_numpy(values))
 
-    def contrastive_loss(self, output1, output2, label, margin=1.0):
-        """
-        Computes the contrastive loss between pairs of embeddings.
-        """
-        dist = F.pairwise_distance(output1, output2, p=2)
-        loss = torch.mean((1 - label) * torch.pow(dist, 2) +
-                          label * torch.pow(torch.clamp(margin - dist, min=0.0), 2))
-        return loss
-
     def forward(self, x1, x2):
         x1 = x1.to(self.device)
         x2 = x2.to(self.device)
         return self.model(x1, x2)
+    
 
 '''trainer = SiameseTrainer(train_benign, train_malignant,
                          test_benign, test_malignant,

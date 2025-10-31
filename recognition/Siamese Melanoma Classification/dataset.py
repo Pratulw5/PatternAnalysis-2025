@@ -14,8 +14,8 @@ from torch.utils.data import Dataset
 
 from PIL import Image
 
-IMAGE_DIR = "/kaggle/input/isic-2020-jpg-224x224-resized/train-image/image"
-TRAIN_CSV_PATH = "/kaggle/input/isic-2020-jpg-224x224-resized/train-metadata.csv"
+IMAGE_DIR = "train-image/image"
+TRAIN_CSV_PATH = "train-metadata.csv"
 
 IMG_SIZE = 224
 
