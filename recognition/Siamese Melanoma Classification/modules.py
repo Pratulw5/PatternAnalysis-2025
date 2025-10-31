@@ -6,14 +6,15 @@ Includes the Siamese network architecture, embedding layers, and similarity head
 """
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torchvision import models
 
 class SiameseNetwork(nn.Module):
     """
-    Siamese CNN using EfficientNet-B0 as backbone.
+    Siamese CNN using EfficientNet-B0 as backbone for contrastive learning.
 
-    Takes a pair of images and outputs a similarity score (0-1). Produces embeddings
-    for each image and computes their absolute difference for classification.
+    Takes a pair of images and produces embeddings. Contrastive loss
+    can be computed between embeddings of similar/dissimilar pairs.
 
     Args:
         base_model_name (str): Backbone model name, currently only "efficientnet_b0".
@@ -30,14 +31,13 @@ class SiameseNetwork(nn.Module):
         else:
             raise ValueError("Unsupported base model name")
 
-        # Keep only convolutional features
         self.feature_extractor = nn.Sequential(*list(base_model.features.children()))
 
-        # freeze early layers, allow fine-tuning from a specific block useful while training
+        # Freeze early layers if needed
         if freeze_base:
-            for idx, param in enumerate(self.feature_extractor):
+            for param in enumerate(self.feature_extractor):
                 param.requires_grad = False  # Freeze everything first
-            for idx, param in enumerate(self.feature_extractor[fine_tune_from_block:]):
+            for param in enumerate(self.feature_extractor[fine_tune_from_block:]):
                 param.requires_grad = True   # Unfreeze last blocks
 
         # Global Average Pooling
@@ -51,12 +51,6 @@ class SiameseNetwork(nn.Module):
             nn.Dropout(0.2)
         )
 
-        # Final classifier
-        self.classifier = nn.Sequential(
-            nn.Linear(embedding_dim, 1),
-            nn.Sigmoid()
-        )
-
     def forward_once(self, x):
         x = self.feature_extractor(x)
         x = self.global_pool(x)
@@ -66,14 +60,9 @@ class SiameseNetwork(nn.Module):
     def forward(self, x1, x2):
         output1 = self.forward_once(x1)
         output2 = self.forward_once(x2)
-        diff = torch.abs(output1 - output2)
-        out = self.classifier(diff)
-        return out
-    
+        return output1, output2
+
     def contrastive_loss(self, output1, output2, label, margin=1.0):
-        """
-        Computes the contrastive loss between pairs of embeddings.
-        """
         dist = F.pairwise_distance(output1, output2, p=2)
         loss = torch.mean((1 - label) * torch.pow(dist, 2) +
                           label * torch.pow(torch.clamp(margin - dist, min=0.0), 2))
