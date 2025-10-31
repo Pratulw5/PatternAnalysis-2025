@@ -20,6 +20,15 @@ class SiameseMelanomaDataset(Dataset):
         num_pairs (int): Number of pairs to generate.
     """
     def __init__(self, benign_paths, malignant_paths, transform=None, num_pairs=10000):
+        """
+        Initializes the SiameseMelanomaDataset.
+
+        Args:
+            benign_paths (list): List of paths to benign images.
+            malignant_paths (list): List of paths to malignant images.
+            transform (callable, optional): Transformations to apply to images.
+            num_pairs (int): Number of image pairs to generate.
+        """
         self.transform = transform
         self.benign_paths = benign_paths
         self.malignant_paths = malignant_paths
@@ -27,9 +36,23 @@ class SiameseMelanomaDataset(Dataset):
         self.rng = np.random.default_rng(42)
 
     def __len__(self):
+        """
+        Returns the number of pairs in the dataset.
+
+        Returns:
+            int: Number of image pairs.
+        """
         return self.num_pairs
 
     def get_transforms(self):
+        """
+        Returns the default image transformations for training.
+
+        Includes resizing, flipping, rotation, tensor conversion, and normalization.
+
+        Returns:
+            torchvision.transforms.Compose: Composed transformations.
+        """
         return transforms.Compose([
             transforms.Resize((IMG_SIZE, IMG_SIZE)),
             transforms.RandomHorizontalFlip(),
@@ -41,6 +64,23 @@ class SiameseMelanomaDataset(Dataset):
         ])
 
     def __getitem__(self, idx):
+        """
+        Generates a single image pair and label.
+
+        50% of the time, returns a pair from the same class (similar = 0),
+        50% of the time, returns a pair from different classes (dissimilar = 1).
+        Malignant images are upsampled as needed.
+
+        Args:
+            idx (int): Index of the pair (ignored, pairs are randomly sampled).
+
+        Returns:
+            tuple: (img1, img2, label)
+                img1 (torch.Tensor): First image tensor.
+                img2 (torch.Tensor): Second image tensor.
+                label (torch.Tensor): Float tensor (0 = similar, 1 = dissimilar).
+        """
+        # Decide if the pair is from the same class or not
         same_class = self.rng.random() < 0.5
 
         if same_class:
