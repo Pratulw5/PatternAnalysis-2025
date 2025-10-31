@@ -4,8 +4,6 @@ from torchvision import transforms
 from PIL import Image
 import numpy as np
 
-IMG_SIZE = 224
-
 class SiameseMelanomaDataset(Dataset):
     """
     Dataset for Siamese network training with benign/malignant image pairs.
