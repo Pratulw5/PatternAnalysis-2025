@@ -69,3 +69,12 @@ class SiameseNetwork(nn.Module):
         diff = torch.abs(output1 - output2)
         out = self.classifier(diff)
         return out
+    
+    def contrastive_loss(self, output1, output2, label, margin=1.0):
+        """
+        Computes the contrastive loss between pairs of embeddings.
+        """
+        dist = F.pairwise_distance(output1, output2, p=2)
+        loss = torch.mean((1 - label) * torch.pow(dist, 2) +
+                          label * torch.pow(torch.clamp(margin - dist, min=0.0), 2))
+        return loss
