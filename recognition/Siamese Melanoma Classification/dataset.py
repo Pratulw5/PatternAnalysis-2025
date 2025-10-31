@@ -1,36 +1,10 @@
-"""
-dataset.py
------------
-Defines the custom SiameseMelanomaDataset class for generating
-image pairs (benign vs malignant) and performing augmentations.
-"""
 import torch
-
+from torch.utils.data import Dataset
 from torchvision import transforms
-
+from PIL import Image
 import numpy as np
 
-from torch.utils.data import Dataset
-
-from PIL import Image
-
-IMAGE_DIR = "train-image/image"
-TRAIN_CSV_PATH = "train-metadata.csv"
-
 IMG_SIZE = 224
-
-# transformations on the images
-transform = transforms.Compose([
-    transforms.Resize((IMG_SIZE, IMG_SIZE)),
-    transforms.RandomHorizontalFlip(),
-    transforms.RandomVerticalFlip(),
-    transforms.RandomRotation(20),
-    transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                         std=[0.229, 0.224, 0.225])
-])
-
 
 class SiameseMelanomaDataset(Dataset):
     """
@@ -52,25 +26,33 @@ class SiameseMelanomaDataset(Dataset):
         self.num_pairs = num_pairs
         self.rng = np.random.default_rng(42)
 
-        # Upsample malignant images to match number of benign pairs
-        self.malignant_weight = len(benign_paths) / len(malignant_paths)
-
     def __len__(self):
         return self.num_pairs
 
+    def get_transforms(self):
+        return transforms.Compose([
+            transforms.Resize((IMG_SIZE, IMG_SIZE)),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomVerticalFlip(),
+            transforms.RandomRotation(20),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                 std=[0.229, 0.224, 0.225])
+        ])
+
     def __getitem__(self, idx):
-        # 50% similar, 50% dissimilar
         same_class = self.rng.random() < 0.5
 
         if same_class:
             if self.rng.random() < 0.5:
-                # benign
+                # Benign pair
                 img1_path, img2_path = self.rng.choice(self.benign_paths, size=2, replace=False)
-                label = 0
             else:
-                # malignant (upsample with replacement)
-                img1_path, img2_path = self.rng.choice(self.malignant_paths, size=2, replace=True)
-                label = 0
+                # Malignant pair (upsample with replacement if needed)
+                img1_path, img2_path = self.rng.choice(
+                    self.malignant_paths, size=2, replace=len(self.malignant_paths) < 2
+                )
+            label = 0
         else:
             # Dissimilar pair: one benign, one malignant
             img1_path = self.rng.choice(self.benign_paths)
