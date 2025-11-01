@@ -185,3 +185,17 @@ def prediction(checkpoint_path, image_dir, csv_path):
     print(f"Predicted: {class_names[pred_class]}")
     print(f"Confidence: {confidence:.4f}")
     print("-" * 70)
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Run inference with trained Siamese Network')
+    
+    parser.add_argument('--checkpoint', type=str, default='best_model.pth',
+                        help='Path to model checkpoint')
+    parser.add_argument('--image_dir', type=str, required=True,
+                        help='Directory containing images')
+    parser.add_argument('--csv_path', type=str, required=True,
+                        help='Path to metadata CSV')
+    
+    args = parser.parse_args()
+    
+    prediction(args.checkpoint, args.image_dir, args.csv_path)
