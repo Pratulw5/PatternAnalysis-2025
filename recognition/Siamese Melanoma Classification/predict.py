@@ -127,8 +127,63 @@ def evaluate_and_visualize(model, test_loader, device, save_dir='results'):
     plt.savefig(f'{save_dir}/confidence_distribution.png', dpi=300, bbox_inches='tight')
     print(f"Confidence distribution saved to {save_dir}/confidence_distribution.png")
     plt.close()
-    
     print("="*70 + "\n")
+
+
+def visualize_predictions(model, image_paths, labels, transform, device, 
+                         save_path='predictions.png', num_samples=8):
+    """
+    Visualize predictions on sample images
+    
+    Args:
+        model: Trained model
+        image_paths (list): List of image paths
+        labels (list): True labels
+        transform: Image transforms
+        device: torch device
+        save_path (str): Path to save visualization
+        num_samples (int): Number of samples to visualize
+    """
+    # Select random samples
+    indices = np.random.choice(len(image_paths), min(num_samples, len(image_paths)), replace=False)
+    
+    fig, axes = plt.subplots(2, 4, figsize=(16, 8))
+    axes = axes.flatten()
+    
+    class_names = ['Benign', 'Malignant']
+    
+    for idx, ax in enumerate(axes):
+        if idx >= len(indices):
+            ax.axis('off')
+            continue
+        
+        img_idx = indices[idx]
+        img_path = image_paths[img_idx]
+        true_label = labels[img_idx]
+        
+        # Load image for display
+        image = Image.open(img_path).convert('RGB')
+        
+        # Get prediction
+        pred_class, confidence = predict_single_image(
+            model, img_path, transform, device
+        )
+        
+        # Display
+        ax.imshow(image)
+        ax.axis('off')
+        
+        # Color code: green if correct, red if wrong
+        color = 'green' if pred_class == true_label else 'red'
+        title = f'True: {class_names[true_label]}\n'
+        title += f'Pred: {class_names[pred_class]} ({confidence:.2%})'
+        ax.set_title(title, color=color, fontweight='bold')
+    
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    print(f"Predictions visualization saved to {save_path}")
+    plt.close()
+
 
 
 def prediction(checkpoint_path, image_dir, csv_path):
@@ -171,6 +226,12 @@ def prediction(checkpoint_path, image_dir, csv_path):
         test_dataset, batch_size=32, shuffle=False
     )
     
+    # Visualize sample predictions
+    print("\nGenerating sample predictions...")
+    visualize_predictions(
+        model, test_paths, test_labels, transform, device,
+        save_path='sample_predictions.png', num_samples=8
+    )
     
     # Full evaluation
     evaluate_and_visualize(model, test_loader, device, save_dir='results')
