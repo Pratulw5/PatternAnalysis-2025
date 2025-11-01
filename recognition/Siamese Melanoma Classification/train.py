@@ -248,3 +248,56 @@ def evaluate(model, test_loader, device):
         'predictions': np.array(all_preds),
         'labels': np.array(all_labels)
     }
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Train Siamese Network for Melanoma Classification')
+    
+    # Data parameters
+    parser.add_argument('--image_dir', type=str, required=True,
+                        help='Directory containing images')
+    parser.add_argument('--csv_path', type=str, required=True,
+                        help='Path to metadata CSV')
+    parser.add_argument('--sample_size', type=int, default=584,
+                        help='Number of samples per class')
+    parser.add_argument('--train_ratio', type=float, default=0.8,
+                        help='Training data ratio')
+    
+    # Model parameters
+    parser.add_argument('--embedding_dim', type=int, default=256,
+                        help='Embedding dimension')
+    parser.add_argument('--margin', type=float, default=1.0,
+                        help='Margin for triplet loss')
+    parser.add_argument('--alpha', type=float, default=0.6,
+                        help='Weight for triplet loss')
+    
+    # Training parameters
+    parser.add_argument('--batch_size', type=int, default=32,
+                        help='Batch size')
+    parser.add_argument('--num_epochs', type=int, default=25,
+                        help='Number of epochs')
+    parser.add_argument('--lr', type=float, default=1e-4,
+                        help='Learning rate for new layers')
+    parser.add_argument('--lr_backbone', type=float, default=5e-6,
+                        help='Learning rate for backbone')
+    parser.add_argument('--weight_decay', type=float, default=1e-4,
+                        help='Weight decay')
+    parser.add_argument('--patience', type=int, default=7,
+                        help='Early stopping patience')
+    
+    # Other parameters
+    parser.add_argument('--img_size', type=int, default=224,
+                        help='Image size')
+    parser.add_argument('--num_workers', type=int, default=2,
+                        help='Number of data loading workers')
+    parser.add_argument('--seed', type=int, default=42,
+                        help='Random seed')
+    parser.add_argument('--save_path', type=str, default='best_model.pth',
+                        help='Path to save best model')
+    
+    args = parser.parse_args()
+    
+    # Convert to config dict
+    config = vars(args)
+    
+    # Train model
+    train_model(config)
