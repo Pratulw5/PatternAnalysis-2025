@@ -1,6 +1,9 @@
 import matplotlib.pyplot as plt
 from modules import SiameseNetwork
 import torch
+import numpy as np
+import os
+import random
 
 def plot_training_curves(history, save_path='training_curves.png'):
     """
@@ -96,3 +99,8 @@ def set_seed(seed=42):
     torch.backends.cudnn.benchmark = False
     
     os.environ['PYTHONHASHSEED'] = str(seed)
+    
+def worker_init_fn(worker_id):
+    """Initialize worker with unique but reproducible seed"""
+    worker_seed = torch.initial_seed() % 2**32
+    np.random.seed(worker_seed)
