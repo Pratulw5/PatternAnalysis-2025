@@ -107,3 +107,46 @@ def initialize_weights(model):
     
     return model
 
+
+class CombinedLoss(nn.Module):
+    """
+    Combined loss function using both triplet loss and classification loss
+    """
+    
+    def __init__(self, margin=1.0, alpha=0.6):
+        """
+        Args:
+            margin (float): Margin for triplet loss
+            alpha (float): Weight for triplet loss (1-alpha for classification)
+        """
+        super(CombinedLoss, self).__init__()
+        self.margin = margin
+        self.alpha = alpha
+        self.triplet_loss = nn.TripletMarginLoss(margin=margin, p=2)
+        self.ce_loss = nn.CrossEntropyLoss()
+    
+    def forward(self, anchor_embed, positive_embed, negative_embed, 
+                labels, class_logits):
+        """
+        Calculate combined loss
+        
+        Args:
+            anchor_embed: Anchor embeddings
+            positive_embed: Positive embeddings
+            negative_embed: Negative embeddings
+            labels: Ground truth labels
+            class_logits: Classification predictions
+            
+        Returns:
+            tuple: (total_loss, triplet_loss, classification_loss)
+        """
+        # Triplet loss: anchor closer to positive than negative
+        triplet = self.triplet_loss(anchor_embed, positive_embed, negative_embed)
+        
+        # Classification loss
+        classification = self.ce_loss(class_logits, labels)
+        
+        # Combined weighted loss
+        total_loss = self.alpha * triplet + (1 - self.alpha) * classification
+        
+        return total_loss, triplet, classification
