@@ -40,8 +40,11 @@ class SiameseNetwork(nn.Module):
         self.embedding = nn.Sequential(
             nn.Flatten(),
             nn.Linear(1280, embedding_dim),
-            nn.ReLU(),
-            nn.Dropout(0.2)
+            nn.BatchNorm1d(512),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5),
+            nn.Linear(512, embedding_dim),
+            nn.BatchNorm1d(embedding_dim),
         )
 
     def forward_once(self, x):
