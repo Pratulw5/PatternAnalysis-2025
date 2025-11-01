@@ -3,7 +3,8 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 from PIL import Image
 import numpy as np
-
+import os
+import pandas as pd
 class SiameseMelanomaDataset(Dataset):
     """
     Dataset for Siamese network training with benign/malignant image pairs.
@@ -42,25 +43,6 @@ class SiameseMelanomaDataset(Dataset):
         """
         return self.num_pairs
 
-    def get_transforms(self):
-        """
-        Returns the default image transformations for training.
-
-        Includes resizing, flipping, rotation, tensor conversion, and normalization.
-
-        Returns:
-            torchvision.transforms.Compose: Composed transformations.
-        """
-        return transforms.Compose([
-            transforms.Resize((IMG_SIZE, IMG_SIZE)),
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomVerticalFlip(),
-            transforms.RandomRotation(20),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                 std=[0.229, 0.224, 0.225])
-        ])
-
     def __getitem__(self, idx):
         """
         Generates a single image pair and label.
@@ -84,7 +66,9 @@ class SiameseMelanomaDataset(Dataset):
         if same_class:
             if self.rng.random() < 0.5:
                 # Benign pair
-                img1_path, img2_path = self.rng.choice(self.benign_paths, size=2, replace=False)
+                img1_path, img2_path = self.rng.choice(
+                    self.benign_paths, size=2, replace=len(self.benign_paths) < 2
+                )
             else:
                 # Malignant pair (upsample with replacement if needed)
                 img1_path, img2_path = self.rng.choice(
@@ -107,3 +91,71 @@ class SiameseMelanomaDataset(Dataset):
             img2 = self.transform(img2)
 
         return img1, img2, torch.tensor(label, dtype=torch.float32)
+
+def get_transforms(img_size=224):
+    """
+    Returns the default image transformations for training.
+    """
+    return transforms.Compose([
+        transforms.Resize((img_size, img_size)),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomVerticalFlip(),
+        transforms.RandomRotation(20),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
+    
+# Data Splitting
+
+def load_data_splits(image_dir, csv_path, sample_size=584, 
+                     train_ratio=0.8, seed=42):
+    """
+    Load and split data into train/test sets with balanced sampling
+    
+    Args:
+        image_dir (str): Directory containing images
+        csv_path (str): Path to metadata CSV file
+        sample_size (int): Number of samples per class to use
+        train_ratio (float): Ratio of data to use for training
+        seed (int): Random seed
+        
+    Returns:
+        tuple: (train_benign, train_malignant, test_benign, test_malignant)
+    """
+    # Load metadata
+    df = pd.read_csv(csv_path)
+    print(f"Total images in metadata: {len(df)}")
+    
+    # Separate by class
+    benign_ids = df[df['target'] == 0]['isic_id'].values
+    malignant_ids = df[df['target'] == 1]['isic_id'].values
+    
+    print(f"Benign: {len(benign_ids)}, Malignant: {len(malignant_ids)}")
+    
+    # Sample balanced subset
+    rng = np.random.default_rng(seed)
+    sampled_benign = rng.choice(benign_ids, sample_size, replace=False)
+    sampled_malignant = rng.choice(malignant_ids, sample_size, replace=False)
+    
+    # Convert to full paths
+    benign_paths = [
+        os.path.join(image_dir, f"{img_id}.jpg") 
+        for img_id in sampled_benign
+    ]
+    malignant_paths = [
+        os.path.join(image_dir, f"{img_id}.jpg") 
+        for img_id in sampled_malignant
+    ]
+    
+    # Split into train/test
+    train_split = int(train_ratio * sample_size)
+    
+    train_benign = benign_paths[:train_split]
+    test_benign = benign_paths[train_split:]
+    train_malignant = malignant_paths[:train_split]
+    test_malignant = malignant_paths[train_split:]
+    
+    print(f"\nTrain: {len(train_benign)} benign, {len(train_malignant)} malignant")
+    print(f"Test: {len(test_benign)} benign, {len(test_malignant)} malignant")
+    
+    return train_benign, train_malignant, test_benign, test_malignant
