@@ -22,23 +22,16 @@ class SiameseNetwork(nn.Module):
         freeze_base (bool): Freeze early layers of the backbone if True.
         fine_tune_from_block (int): Block index from which to unfreeze for fine-tuning.
     """
-    def __init__(self, base_model_name="efficientnet_b0", embedding_dim=256, freeze_base=True, fine_tune_from_block=5):
+    def __init__(self, embedding_dim=256, pretrained=True):
         super(SiameseNetwork, self).__init__()
 
         # Load EfficientNet-B0 backbone
-        if base_model_name == "efficientnet_b0":
+        if pretrained:
             base_model = models.efficientnet_b0(weights=models.EfficientNet_B0_Weights.IMAGENET1K_V1)
         else:
-            raise ValueError("Unsupported base model name")
-
+            base_model = models.efficientnet_b0(weights=None)
+        
         self.feature_extractor = nn.Sequential(*list(base_model.features.children()))
-
-        # Freeze early layers if needed
-        if freeze_base:
-            for param in self.feature_extractor:
-                param.requires_grad = False  # Freeze everything first
-            for param in self.feature_extractor[fine_tune_from_block:]:
-                param.requires_grad = True   # Unfreeze last blocks
 
         # Global Average Pooling
         self.global_pool = nn.AdaptiveAvgPool2d(1)
