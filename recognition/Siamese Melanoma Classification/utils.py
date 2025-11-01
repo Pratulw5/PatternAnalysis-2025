@@ -83,3 +83,16 @@ def load_model(checkpoint_path, device):
     print(f"Epoch: {checkpoint.get('epoch', 'N/A')}")
     
     return model
+def set_seed(seed=42):
+    """Set random seeds for reproducibility across all libraries"""
+    random.seed(seed)                    # Python random
+    np.random.seed(seed)                 # Numpy
+    torch.manual_seed(seed)              # PyTorch CPU
+    torch.cuda.manual_seed(seed)         # PyTorch single GPU
+    torch.cuda.manual_seed_all(seed)     # PyTorch multi-GPU
+    
+    # Force deterministic behavior
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    
+    os.environ['PYTHONHASHSEED'] = str(seed)
