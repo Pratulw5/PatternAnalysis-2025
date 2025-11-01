@@ -6,10 +6,12 @@ Includes accuracy evaluation, metric tracking, and result plotting.
 """
 import torch
 import numpy as np
+import argparse
 from modules import SiameseNetwork, CombinedLoss, initialize_weights
 from dataset import load_data_splits, create_dataloaders
 from tqdm import tqdm
-from utils import plot_training_curves
+from utils import plot_training_curves, set_seed
+ 
 
 def train_epoch(model, train_loader, criterion, optimizer, scheduler, device):
     """
@@ -77,6 +79,7 @@ def train_epoch(model, train_loader, criterion, optimizer, scheduler, device):
 
 
 def train_model(config):
+    set_seed(config['seed'])
     """
     Main training function
     
