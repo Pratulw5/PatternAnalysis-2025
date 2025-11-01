@@ -80,18 +80,35 @@ class TripletMelanomaDataset(Dataset):
 
 
 
-def get_transforms(img_size=224):
+def get_transforms(img_size=224, mode='train'):
     """
-    Returns the default image transformations for training.
+        Get appropriate transforms for train/test
+        
+        Args:
+            img_size (int): Size to resize images to
+            mode (str): 'train' or 'test'
+            
+        Returns:
+            torchvision.transforms.Compose: Composed transforms
     """
-    return transforms.Compose([
-        transforms.Resize((img_size, img_size)),
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomVerticalFlip(),
-        transforms.RandomRotation(20),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
+    if mode == 'train':
+        return transforms.Compose([
+            transforms.Resize((img_size, img_size)),
+            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.RandomVerticalFlip(p=0.5),
+            transforms.RandomRotation(30),
+            transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.2),
+            transforms.RandomAffine(degrees=0, translate=(0.15, 0.15), scale=(0.85, 1.15)),
+            transforms.RandomPerspective(distortion_scale=0.2, p=0.5),
+            transforms.ToTensor(),
+            transforms.Normalize( mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            transforms.RandomErasing(p=0.3, scale=(0.02, 0.15))
+        ])
+    else:  # test mode
+        return transforms.Compose([transforms.Resize((img_size, img_size)),
+                transforms.ToTensor(),
+                transforms.Normalize( mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            ])
     
 # Data Splitting
 
