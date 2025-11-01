@@ -9,6 +9,7 @@ import numpy as np
 from modules import SiameseNetwork, CombinedLoss, initialize_weights
 from dataset import load_data_splits, create_dataloaders
 from tqdm import tqdm
+from utils import plot_training_curves
 
 def train_epoch(model, train_loader, criterion, optimizer, scheduler, device):
     """
@@ -203,6 +204,8 @@ def train_model(config):
         
         print("=" * 70)
     
+    # Plot training curves
+    plot_training_curves(history, save_path='training_curves.png')
     print(f"\n{'='*70}")
     print(f"Training Complete!")
     print(f"Best Test Accuracy: {best_acc:.4f}")
