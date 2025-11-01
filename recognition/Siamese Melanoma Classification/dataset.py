@@ -5,6 +5,7 @@ from PIL import Image
 import numpy as np
 import os
 import pandas as pd
+from utils import worker_init_fn
 class TripletMelanomaDataset(Dataset):
     """
     Dataset that creates triplets of images for Siamese network training.
@@ -199,13 +200,16 @@ def create_dataloaders(train_benign, train_malignant, test_benign, test_malignan
         num_triplets=4000,
         seed=123
     )
-    
+    generator = torch.Generator()
+    generator.manual_seed(42)
     # Create dataloaders
     train_loader = DataLoader(
         train_dataset, 
         batch_size=batch_size, 
         shuffle=True,
         num_workers=num_workers,
+        worker_init_fn=worker_init_fn,
+        generator=generator,
         pin_memory=True
     )
     
