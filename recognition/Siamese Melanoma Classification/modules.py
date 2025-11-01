@@ -35,9 +35,9 @@ class SiameseNetwork(nn.Module):
 
         # Freeze early layers if needed
         if freeze_base:
-            for param in enumerate(self.feature_extractor):
+            for param in self.feature_extractor:
                 param.requires_grad = False  # Freeze everything first
-            for param in enumerate(self.feature_extractor[fine_tune_from_block:]):
+            for param in self.feature_extractor[fine_tune_from_block:]:
                 param.requires_grad = True   # Unfreeze last blocks
 
         # Global Average Pooling
