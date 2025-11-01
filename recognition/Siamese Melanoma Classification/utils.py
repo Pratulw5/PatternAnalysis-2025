@@ -1,4 +1,7 @@
 import matplotlib.pyplot as plt
+from modules import SiameseNetwork
+import torch
+
 def plot_training_curves(history, save_path='training_curves.png'):
     """
     Plot training curves
@@ -46,3 +49,37 @@ def plot_training_curves(history, save_path='training_curves.png'):
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     print(f"Training curves saved to {save_path}")
     plt.close()
+
+
+def load_model(checkpoint_path, device):
+    """
+    Load trained model from checkpoint
+    
+    Args:
+        checkpoint_path (str): Path to model checkpoint
+        device: torch device
+        
+    Returns:
+        model: Loaded model
+    """
+    checkpoint = torch.load(checkpoint_path, map_location=device)
+    
+    # Get config from checkpoint
+    config = checkpoint.get('config', {})
+    embedding_dim = config.get('embedding_dim', 256)
+    
+    # Initialize model
+    model = SiameseNetwork(
+        embedding_dim=embedding_dim,
+        pretrained=False  # We're loading weights
+    ).to(device)
+    
+    # Load weights
+    model.load_state_dict(checkpoint['model_state_dict'])
+    model.eval()
+    
+    print(f"Model loaded from {checkpoint_path}")
+    print(f"Test accuracy: {checkpoint.get('test_acc', 'N/A'):.4f}")
+    print(f"Epoch: {checkpoint.get('epoch', 'N/A')}")
+    
+    return model
