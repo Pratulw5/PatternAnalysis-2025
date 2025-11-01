@@ -1,5 +1,5 @@
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from PIL import Image
 import numpy as np
@@ -164,3 +164,61 @@ def load_data_splits(image_dir, csv_path, sample_size=584,
     print(f"Test: {len(test_benign)} benign, {len(test_malignant)} malignant")
     
     return train_benign, train_malignant, test_benign, test_malignant
+
+
+def create_dataloaders(train_benign, train_malignant, test_benign, test_malignant,
+                       batch_size=32, num_workers=2, img_size=224):
+    """
+    Create train and test dataloaders
+    
+    Args:
+        train_benign, train_malignant: Training image paths
+        test_benign, test_malignant: Test image paths
+        batch_size (int): Batch size
+        num_workers (int): Number of workers for data loading
+        img_size (int): Image size
+        
+    Returns:
+        tuple: (train_loader, test_loader)
+    """
+    # Get transforms
+    train_transform = get_transforms(img_size, mode='train')
+    test_transform = get_transforms(img_size, mode='test')
+    
+    # Create datasets
+    train_dataset = TripletMelanomaDataset(
+        train_benign, train_malignant,
+        transform=train_transform,
+        num_triplets=20000,
+        seed=42
+    )
+    
+    test_dataset = TripletMelanomaDataset(
+        test_benign, test_malignant,
+        transform=test_transform,
+        num_triplets=4000,
+        seed=123
+    )
+    
+    # Create dataloaders
+    train_loader = DataLoader(
+        train_dataset, 
+        batch_size=batch_size, 
+        shuffle=True,
+        num_workers=num_workers,
+        pin_memory=True
+    )
+    
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=True
+    )
+    
+    print(f"\nDataloaders created:")
+    print(f"Train batches: {len(train_loader)}")
+    print(f"Test batches: {len(test_loader)}")
+    
+    return train_loader, test_loader
