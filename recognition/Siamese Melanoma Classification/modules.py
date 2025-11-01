@@ -85,3 +85,25 @@ class SiameseNetwork(nn.Module):
         embed = self.forward_once(x)
         return self.classifier(embed)
 
+def initialize_weights(model):
+    """
+    Initialize weights of the embedding and classifier layers using Kaiming Normal initialization.
+    
+    Args:
+        model: PyTorch model
+    """
+    def init_func(m):
+        if isinstance(m, nn.Linear):
+            nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+            if m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.BatchNorm1d):
+            nn.init.constant_(m.weight, 1)
+            nn.init.constant_(m.bias, 0)
+    
+    # Only initialize embedding and classifier (not pretrained backbone)
+    model.embedding.apply(init_func)
+    model.classifier.apply(init_func)
+    
+    return model
+
