@@ -6,9 +6,7 @@ Includes accuracy evaluation, metric tracking, and result plotting.
 """
 import torch
 import numpy as np
-from modules import SiameseNetwork
-from dataset import SiameseMelanomaDataset
-from modules import SiameseNetwork, initialize_weights
+from modules import SiameseNetwork, CombinedLoss, initialize_weights
 from dataset import load_data_splits, create_dataloaders
 from tqdm import tqdm
 
@@ -76,91 +74,174 @@ def train_epoch(model, train_loader, criterion, optimizer, scheduler, device):
     }
 
 
-class SiameseTrainer:
+
+def train_model(config):
     """
-    Trainer class for SiameseNetwork with contrastive loss.
-
-    Handles dataset creation, dataloaders, model initialization, and training.
+    Main training function
+    
+    Args:
+        config (dict): Training configuration
     """
-    def __init__(self, train_benign, train_malignant, test_benign, test_malignant,
-                 transform=None, embedding_dim=256, freeze_base=True,
-                 fine_tune_from_block=2, batch_size=16, device=None):
+    # Set device
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f"Using device: {device}\n")
+    
+    # Load data
+    print("Loading data...")
+    train_benign, train_malignant, test_benign, test_malignant = load_data_splits(
+        config['image_dir'],
+        config['csv_path'],
+        sample_size=config['sample_size'],
+        train_ratio=config['train_ratio'],
+        seed=config['seed']
+    )
+    
+    # Create dataloaders
+    train_loader, test_loader = create_dataloaders(
+        train_benign, train_malignant, 
+        test_benign, test_malignant,
+        batch_size=config['batch_size'],
+        num_workers=config['num_workers'],
+        img_size=config['img_size']
+    )
+    
+    # Create model
+    print("\nInitializing model...")
+    model = SiameseNetwork(
+        embedding_dim=config['embedding_dim'],
+        pretrained=True
+    ).to(device)
+    
+    # Initialize new layers
+    model = initialize_weights(model)
+    
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"Total parameters: {total_params:,}")
+    print(f"Trainable parameters: {trainable_params:,}")
+    
+    # Loss and optimizer
+    criterion = CombinedLoss(
+        margin=config['margin'],
+        alpha=config['alpha']
+    )
+    
+    optimizer = torch.optim.AdamW([
+        {'params': model.feature_extractor.parameters(), 'lr': config['lr_backbone']},
+        {'params': model.embedding.parameters(), 'lr': config['lr']},
+        {'params': model.classifier.parameters(), 'lr': config['lr']}
+    ], weight_decay=config['weight_decay'])
+    
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+        optimizer, T_0=5, T_mult=1, eta_min=1e-7
+    )
+    
+    # Training history
+    history = {
+        'train_loss': [],
+        'train_triplet_loss': [],
+        'train_class_loss': [],
+        'train_acc': [],
+        'test_acc': []
+    }
+    
+    # Training loop
+    best_acc = 0.0
+    patience_counter = 0
+    
+    print("\nStarting training...\n")
+    print("=" * 70)
+    
+    for epoch in range(config['num_epochs']):
+        print(f"\nEpoch [{epoch+1}/{config['num_epochs']}]")
+        
+        # Train
+        train_metrics = train_epoch(
+            model, train_loader, criterion, optimizer, scheduler, device
+        )
+        
+        # Evaluate
+        test_metrics = evaluate(model, test_loader, device)
+        
+        # Update history
+        history['train_loss'].append(train_metrics['loss'])
+        history['train_triplet_loss'].append(train_metrics['triplet_loss'])
+        history['train_class_loss'].append(train_metrics['class_loss'])
+        history['train_acc'].append(train_metrics['accuracy'])
+        history['test_acc'].append(test_metrics['accuracy'])
+        
+        # Print metrics
+        print(f"\nResults:")
+        print(f"  Total Loss: {train_metrics['loss']:.4f}")
+        print(f"  Triplet Loss: {train_metrics['triplet_loss']:.4f}")
+        print(f"  Classification Loss: {train_metrics['class_loss']:.4f}")
+        print(f"  Train Accuracy: {train_metrics['accuracy']:.4f}")
+        print(f"  Test Accuracy: {test_metrics['accuracy']:.4f}")
+        print(f"  Learning Rate: {optimizer.param_groups[0]['lr']:.2e}")
+        
+        # Save best model
+        if test_metrics['accuracy'] > best_acc:
+            best_acc = test_metrics['accuracy']
+            patience_counter = 0
+            
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'test_acc': test_metrics['accuracy'],
+                'config': config
+            }, config['save_path'])
+            
+            print(f"  ✓ New best model saved! (Acc: {best_acc:.4f})")
+        else:
+            patience_counter += 1
+        
+        # Early stopping
+        if patience_counter >= config['patience']:
+            print(f"\nEarly stopping after {config['patience']} epochs without improvement")
+            break
+        
+        print("=" * 70)
+    
+    print(f"\n{'='*70}")
+    print(f"Training Complete!")
+    print(f"Best Test Accuracy: {best_acc:.4f}")
+    print(f"Model saved to: {config['save_path']}")
+    print(f"{'='*70}\n")
 
-        self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.batch_size = batch_size
-        self.rng = np.random.default_rng(42)
 
-        # Initialize model
-        self.model = SiameseNetwork(freeze_base=freeze_base,
-                                    fine_tune_from_block=fine_tune_from_block,
-                                    embedding_dim=embedding_dim).to(self.device)
-        self._initialize_weights()
-
-        # Create datasets
-        self.train_dataset = SiameseMelanomaDataset(train_benign, train_malignant,
-                                                    transform=transform, num_pairs=10000)
-        self.test_dataset = SiameseMelanomaDataset(test_benign, test_malignant,
-                                                   transform=transform, num_pairs=2000)
-
-        # Create dataloaders
-        self.train_loader = DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True)
-        self.test_loader = DataLoader(self.test_dataset, batch_size=self.batch_size, shuffle=False)
-
-    def _initialize_weights(self):
-        for name, param in self.model.named_parameters():
-            if "embedding" in name:
-                if "weight" in name:
-                    self._W_init_torch(param)
-                elif "bias" in name:
-                    self._b_init_torch(param)
-
-    def _W_init_torch(self, tensor):
-        """Initialize weights as N(0, 0.01)"""
-        with torch.no_grad():
-            values = self.rng.normal(loc=0, scale=1e-2, size=tensor.shape).astype(np.float32)
-            tensor.copy_(torch.from_numpy(values))
-
-    def _b_init_torch(self, tensor):
-        """Initialize biases as N(0.5, 0.01)"""
-        with torch.no_grad():
-            values = self.rng.normal(loc=0.5, scale=1e-2, size=tensor.shape).astype(np.float32)
-            tensor.copy_(torch.from_numpy(values))
-
-    def forward(self, x1, x2):
-        x1 = x1.to(self.device)
-        x2 = x2.to(self.device)
-        emb1, emb2 = self.model(x1, x2)
-        return emb1, emb2
-
-    def train(self, epochs=5, lr=1e-4, margin=1.0):
-        """Main training loop for contrastive loss."""
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
-
-        self.model.train()
-        for epoch in range(epochs):
-            running_loss = 0.0
-            for img1, img2, label in self.train_loader:
-                emb1, emb2 = self.forward(img1, img2)
-                label = label.to(self.device)
-                loss = self.model.contrastive_loss(emb1, emb2, label, margin)
-
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-
-                running_loss += loss.item()
-
-            avg_loss = running_loss / len(self.train_loader)
-            print(f"Epoch [{epoch+1}/{epochs}] - Loss: {avg_loss:.4f}")
-
-
-
-if __name__ == "__main__":
-
-    train_benign, train_malignant = ["path/to/benign1.jpg"], ["path/to/malignant1.jpg"]
-    test_benign, test_malignant = ["path/to/benign_test.jpg"], ["path/to/malignant_test.jpg"]
-    IMG_SIZE = 224
-
-    trainer = SiameseTrainer(train_benign, train_malignant,test_benign, test_malignanttransform=SiameseMelanomaDataset.transform, batch_size=4)
-
-    trainer.train(epochs=2, lr=1e-4)
+def evaluate(model, test_loader, device):
+    """
+    Evaluate model on test set
+    
+    Returns:
+        dict: Evaluation metrics
+    """
+    model.eval()
+    correct = 0
+    total = 0
+    all_preds = []
+    all_labels = []
+    
+    with torch.no_grad():
+        for anchor, positive, negative, labels in tqdm(test_loader, desc='Evaluating'):
+            anchor = anchor.to(device)
+            labels = labels.to(device)
+            
+            # Get predictions
+            logits = model.classify(anchor)
+            preds = torch.argmax(logits, dim=1)
+            
+            correct += (preds == labels).sum().item()
+            total += labels.size(0)
+            
+            all_preds.extend(preds.cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
+    
+    accuracy = correct / total
+    
+    return {
+        'accuracy': accuracy,
+        'predictions': np.array(all_preds),
+        'labels': np.array(all_labels)
+    }
