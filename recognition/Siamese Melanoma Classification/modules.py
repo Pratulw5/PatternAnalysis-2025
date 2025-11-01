@@ -39,7 +39,7 @@ class SiameseNetwork(nn.Module):
         # Fully connected embedding layer
         self.embedding = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(1280, embedding_dim),
+            nn.Linear(1280, 512),
             nn.BatchNorm1d(512),
             nn.ReLU(inplace=True),
             nn.Dropout(0.5),
@@ -85,13 +85,16 @@ class SiameseNetwork(nn.Module):
         embed = self.forward_once(x)
         return self.classifier(embed)
 
-def initialize_weights(model):
+def initialize_weights(model, seed=42):
     """
     Initialize weights of the embedding and classifier layers using Kaiming Normal initialization.
     
     Args:
         model: PyTorch model
     """
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
     def init_func(m):
         if isinstance(m, nn.Linear):
             nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
