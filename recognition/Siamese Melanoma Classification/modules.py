@@ -46,6 +46,8 @@ class SiameseNetwork(nn.Module):
             nn.Linear(512, embedding_dim),
             nn.BatchNorm1d(embedding_dim),
         )
+        # Classification head for auxiliary task
+        self.classifier = nn.Sequential(nn.ReLU(),nn.Dropout(0.3),nn.Linear(embedding_dim, 2))
 
     def forward_once(self, x):
         x = self.feature_extractor(x)
@@ -58,8 +60,16 @@ class SiameseNetwork(nn.Module):
         output2 = self.forward_once(x2)
         return output1, output2
 
-    def contrastive_loss(self, output1, output2, label, margin=1.0):
-        dist = F.pairwise_distance(output1, output2, p=2)
-        loss = torch.mean((1 - label) * torch.pow(dist, 2) +
-                          label * torch.pow(torch.clamp(margin - dist, min=0.0), 2))
-        return loss
+    def classify(self, x):
+        """
+        Perform classification on input image
+        
+        Args:
+            x (torch.Tensor): Input image tensor
+            
+        Returns:
+            torch.Tensor: Classification logits [B, 2]
+        """
+        embed = self.forward_once(x)
+        return self.classifier(embed)
+
