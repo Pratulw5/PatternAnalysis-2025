@@ -5,11 +5,76 @@ Handles model training, validation, and testing for the Siamese network.
 Includes accuracy evaluation, metric tracking, and result plotting.
 """
 import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader
 import numpy as np
 from modules import SiameseNetwork
 from dataset import SiameseMelanomaDataset
+from modules import SiameseNetwork, initialize_weights
+from dataset import load_data_splits, create_dataloaders
+from tqdm import tqdm
+
+def train_epoch(model, train_loader, criterion, optimizer, scheduler, device):
+    """
+    Train for one epoch
+    
+    Returns:
+        dict: Training metrics
+    """
+    model.train()
+    epoch_loss = 0.0
+    epoch_triplet = 0.0
+    epoch_class = 0.0
+    correct = 0
+    total = 0
+    
+    pbar = tqdm(train_loader, desc='Training')
+    for anchor, positive, negative, labels in pbar:
+        anchor = anchor.to(device)
+        positive = positive.to(device)
+        negative = negative.to(device)
+        labels = labels.to(device)
+        
+        # Forward pass
+        anchor_embed, positive_embed, negative_embed = model(
+            anchor, positive, negative
+        )
+        class_logits = model.classifier(anchor_embed)
+        
+        # Calculate loss
+        loss, triplet_loss, class_loss = criterion(
+            anchor_embed, positive_embed, negative_embed, 
+            labels, class_logits
+        )
+        
+        # Backward pass
+        optimizer.zero_grad()
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=2.0)
+        optimizer.step()
+        scheduler.step()
+        
+        # Accumulate metrics
+        epoch_loss += loss.item()
+        epoch_triplet += triplet_loss.item()
+        epoch_class += class_loss.item()
+        
+        # Calculate accuracy
+        preds = torch.argmax(class_logits, dim=1)
+        correct += (preds == labels).sum().item()
+        total += labels.size(0)
+        
+        # Update progress bar
+        pbar.set_postfix({
+            'loss': f'{loss.item():.4f}',
+            'acc': f'{correct/total:.4f}'
+        })
+    
+    return {
+        'loss': epoch_loss / len(train_loader),
+        'triplet_loss': epoch_triplet / len(train_loader),
+        'class_loss': epoch_class / len(train_loader),
+        'accuracy': correct / total
+    }
+
 
 class SiameseTrainer:
     """
