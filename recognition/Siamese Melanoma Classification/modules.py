@@ -53,7 +53,7 @@ class SiameseNetwork(nn.Module):
         x = self.feature_extractor(x)
         x = self.global_pool(x)
         x = self.embedding(x)
-        return x
+        return F.normalize(x, p=2, dim=1)
 
     def forward(self, x1, x2):
         output1 = self.forward_once(x1)
