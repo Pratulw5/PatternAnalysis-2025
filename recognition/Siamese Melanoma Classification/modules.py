@@ -55,10 +55,22 @@ class SiameseNetwork(nn.Module):
         x = self.embedding(x)
         return F.normalize(x, p=2, dim=1)
 
-    def forward(self, x1, x2):
-        output1 = self.forward_once(x1)
-        output2 = self.forward_once(x2)
-        return output1, output2
+    def forward(self, anchor, positive, negative):
+        """
+        Forward pass for triplet learning
+        
+        Args:
+            anchor (torch.Tensor): Anchor images
+            positive (torch.Tensor): Positive examples (same class as anchor)
+            negative (torch.Tensor): Negative examples (different class)
+            
+        Returns:
+            tuple: (anchor_embed, positive_embed, negative_embed)
+        """
+        anchor_embed = self.forward_once(anchor)
+        positive_embed = self.forward_once(positive)
+        negative_embed = self.forward_once(negative)
+        return anchor_embed, positive_embed, negative_embed
 
     def classify(self, x):
         """
