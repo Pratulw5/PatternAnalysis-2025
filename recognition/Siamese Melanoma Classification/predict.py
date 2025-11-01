@@ -5,40 +5,32 @@ Demonstrates how to load the trained Siamese model and perform
 inference on sample image pairs.
 """
 import torch 
-def evaluate_siamese(model, similarity_layer, data_loader, device, threshold=0.5):
-    """
-    Evaluate the Siamese network with a similarity head on a dataset.
+import numpy as np
+from PIL import Image
 
+def predict_single_image(model, image_path, transform, device):
+    """
+    Predict class for a single image
+    
     Args:
-        model (nn.Module): Siamese base model.
-        similarity_layer (nn.Module): Linear similarity head.
-        data_loader (DataLoader): DataLoader for evaluation data.
-        device (torch.device): Device to run evaluation on.
-        threshold (float): Probability threshold to classify as similar.
-
+        model: Trained model
+        image_path (str): Path to image
+        transform: Image transforms
+        device: torch device
+        
     Returns:
-        float: Accuracy on the given dataset.
+        tuple: (predicted_class, probability)
     """
-    model.eval()
-    similarity_layer.eval()
-    correct = 0
-    total = 0
-
+    # Load and preprocess image
+    image = Image.open(image_path).convert('RGB')
+    image_tensor = transform(image).unsqueeze(0).to(device)
+    
+    # Get prediction
     with torch.no_grad():
-        for img1, img2, labels in data_loader:
-            img1, img2, labels = img1.to(device), img2.to(device), labels.to(device)
+        logits = model.classify(image_tensor)
+        probs = torch.softmax(logits, dim=1)
+        pred_class = torch.argmax(probs, dim=1).item()
+        confidence = probs[0, pred_class].item()
+    
+    return pred_class, confidence
 
-            embed1 = model.forward_once(img1)
-            embed2 = model.forward_once(img2)
-            diff = torch.abs(embed1 - embed2)
-
-            logits = similarity_layer(diff)
-            probs = torch.sigmoid(logits)
-
-            preds = (probs >= threshold).float()
-            correct += (preds == labels.view(-1,1)).sum().item()
-            total += labels.size(0)
-
-    model.train()
-    similarity_layer.train()
-    return correct / total
