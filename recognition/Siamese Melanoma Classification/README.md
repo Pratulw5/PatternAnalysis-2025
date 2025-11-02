@@ -367,11 +367,11 @@ python train.py --seed 42 --image_dir /path --csv_path /path/train.csv
 - **Malignant Lesions**: 584 (1.8%)
 - **Image Format**: JPG (224×224×3 RGB)
 - **Class Imbalance**: High (55.8:1 ratio)
-![Images of skin lesions](/images/InputExamples.png)
+![Images of skin lesions](images/InputExamples.png)
 
 ### 1. Training Curves
 
-![Training Curves](/images/training_curves.png)
+![Training Curves](images/training_curves.png)
 
 **Description**: Training progress over 25 epochs showing:
 - **Top Left**: Total combined loss (triplet + classification)
@@ -485,8 +485,8 @@ melanoma-siamese-network/
 │
 └── images/                    # Test results directory (after testing)
     ├── Architecture.png
-    ├── Architecture.png
-    ├── Architecture.png
+    ├── test_results_comprehensive
+    ├── training_curves.png
     └── InputExamples.png
 └── results/                    # Test results directory (after testing)
     ├── train.out
