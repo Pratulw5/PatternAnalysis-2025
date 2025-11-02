@@ -255,8 +255,8 @@ transforms.Compose([
 
 ### Step 1: Clone Repository
 ```bash
-git clone https://github.com/yourusername/melanoma-siamese-network.git
-cd Siamese Melanoma Classification
+git clone https://github.com/Pratulw5/PatternAnalysis-2025.git
+cd "/PatternAnalysis-2025/recognition/Siamese Melanoma Classification"
 ```
 
 ### Step 2: Create Virtual Environment
