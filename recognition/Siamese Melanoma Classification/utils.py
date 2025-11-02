@@ -1,3 +1,16 @@
+"""
+utils.py
+---------
+Utilities for Siamese Network Training and Evaluation.
+Includes functions for:
+- Plotting training curves (losses and accuracy)
+- Loading a trained model checkpoint
+- Setting deterministic seeds for reproducibility
+- Worker initialization for DataLoader
+Author: Pratul Wadhwa
+Student_Id: 4907308
+"""
+
 import matplotlib.pyplot as plt
 from modules import SiameseNetwork
 import torch

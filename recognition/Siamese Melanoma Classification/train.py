@@ -3,7 +3,10 @@ train.py
 ---------
 Handles model training, validation, and testing for the Siamese network.
 Includes accuracy evaluation, metric tracking, and result plotting.
+Author: Pratul Wadhwa
+Student_Id: 49073085
 """
+
 import torch
 import numpy as np
 import argparse

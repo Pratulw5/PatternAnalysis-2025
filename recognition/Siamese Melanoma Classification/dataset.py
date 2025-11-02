@@ -1,3 +1,12 @@
+"""
+dataset.py
+-----------
+Defines the custom SiameseMelanomaDataset class for generating
+image pairs (benign vs malignant) and performing augmentations.
+Author: Pratul Wadhwa
+Student_Id: 49073085
+"""
+
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms

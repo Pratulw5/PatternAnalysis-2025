@@ -3,7 +3,10 @@ modules.py
 -----------
 Defines all model components for the Siamese Melanoma Detection system.
 Includes the Siamese network architecture, embedding layers, and similarity heads.
+Author: Pratul Wadhwa
+Student_Id: 49073085
 """
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
