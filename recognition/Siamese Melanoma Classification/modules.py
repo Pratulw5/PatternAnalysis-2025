@@ -23,6 +23,13 @@ class SiameseNetwork(nn.Module):
         fine_tune_from_block (int): Block index from which to unfreeze for fine-tuning.
     """
     def __init__(self, embedding_dim=256, pretrained=True):
+        """
+        Initializes a Siamese Network with EfficientNet-B0 backbone.
+
+        Args:
+            embedding_dim (int): Dimension of the output embedding. Default 256.
+            pretrained (bool): Use pretrained ImageNet weights. Default True.
+        """
         super(SiameseNetwork, self).__init__()
 
         # Load EfficientNet-B0 backbone
@@ -50,6 +57,15 @@ class SiameseNetwork(nn.Module):
         self.classifier = nn.Sequential(nn.ReLU(),nn.Dropout(0.3),nn.Linear(embedding_dim, 2))
 
     def forward_once(self, x):
+        """
+        Forward pass for a single input.
+
+        Args:
+            x (torch.Tensor): Input image tensor (batch_size, 3, H, W).
+
+        Returns:
+            torch.Tensor: L2-normalized embedding (batch_size, embedding_dim).
+        """
         x = self.feature_extractor(x)
         x = self.global_pool(x)
         x = self.embedding(x)
