@@ -281,12 +281,6 @@ def prediction(checkpoint_path, image_dir, csv_path, train_ratio=0.7, val_ratio=
         test_dataset, batch_size=32, shuffle=False
     )
     
-    # Visualize sample predictions
-    print("\n📸 Generating sample predictions...")
-    visualize_predictions(
-        model, test_paths, test_labels, transform, device,
-        save_path='results/sample_predictions.png', num_samples=8
-    )
     
     # Full test evaluation with comprehensive visualizations
     test_accuracy, confusion_mat = evaluate_and_visualize(
