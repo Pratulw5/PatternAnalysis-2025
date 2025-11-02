@@ -114,19 +114,24 @@ def get_transforms(img_size=224, mode='train'):
 # Data Splitting
 
 def load_data_splits(image_dir, csv_path, sample_size=584, 
-                     train_ratio=0.8, seed=42):
+                     train_ratio=0.7, val_ratio=0.15, seed=42):
     """
-    Load and split data into train/test sets with balanced sampling
+    Load and split data into train/val/test sets with balanced sampling
     
     Args:
         image_dir (str): Directory containing images
         csv_path (str): Path to metadata CSV file
         sample_size (int): Number of samples per class to use
-        train_ratio (float): Ratio of data to use for training
+        train_ratio (float): Ratio of data to use for training (default: 0.7)
+        val_ratio (float): Ratio of data to use for validation (default: 0.15)
         seed (int): Random seed
         
     Returns:
-        tuple: (train_benign, train_malignant, test_benign, test_malignant)
+        tuple: (train_benign, train_malignant, val_benign, val_malignant, 
+                test_benign, test_malignant)
+        
+    Note:
+        test_ratio = 1 - train_ratio - val_ratio (default: 0.15)
     """
     # Load metadata
     df = pd.read_csv(csv_path)
@@ -153,37 +158,52 @@ def load_data_splits(image_dir, csv_path, sample_size=584,
         for img_id in sampled_malignant
     ]
     
-    # Split into train/test
+    # Calculate split indices
     train_split = int(train_ratio * sample_size)
+    val_split = int((train_ratio + val_ratio) * sample_size)
     
+    # Split into train/val/test
     train_benign = benign_paths[:train_split]
-    test_benign = benign_paths[train_split:]
+    val_benign = benign_paths[train_split:val_split]
+    test_benign = benign_paths[val_split:]
+    
     train_malignant = malignant_paths[:train_split]
-    test_malignant = malignant_paths[train_split:]
+    val_malignant = malignant_paths[train_split:val_split]
+    test_malignant = malignant_paths[val_split:]
     
-    print(f"\nTrain: {len(train_benign)} benign, {len(train_malignant)} malignant")
-    print(f"Test: {len(test_benign)} benign, {len(test_malignant)} malignant")
+    print(f"\nData splits:")
+    print(f"  Train: {len(train_benign)} benign, {len(train_malignant)} malignant "
+          f"(Total: {len(train_benign) + len(train_malignant)})")
+    print(f"  Val:   {len(val_benign)} benign, {len(val_malignant)} malignant "
+          f"(Total: {len(val_benign) + len(val_malignant)})")
+    print(f"  Test:  {len(test_benign)} benign, {len(test_malignant)} malignant "
+          f"(Total: {len(test_benign) + len(test_malignant)})")
     
-    return train_benign, train_malignant, test_benign, test_malignant
+    return (train_benign, train_malignant, 
+            val_benign, val_malignant,
+            test_benign, test_malignant)
 
-
-def create_dataloaders(train_benign, train_malignant, test_benign, test_malignant,
+def create_dataloaders(train_benign, train_malignant, 
+                       val_benign, val_malignant,
+                       test_benign, test_malignant,
                        batch_size=32, num_workers=2, img_size=224):
     """
-    Create train and test dataloaders
+    Create train, validation, and test dataloaders with deterministic behavior
     
     Args:
         train_benign, train_malignant: Training image paths
+        val_benign, val_malignant: Validation image paths
         test_benign, test_malignant: Test image paths
         batch_size (int): Batch size
         num_workers (int): Number of workers for data loading
         img_size (int): Image size
         
     Returns:
-        tuple: (train_loader, test_loader)
+        tuple: (train_loader, val_loader, test_loader)
     """
     # Get transforms
     train_transform = get_transforms(img_size, mode='train')
+    val_transform = get_transforms(img_size, mode='val')
     test_transform = get_transforms(img_size, mode='test')
     
     # Create datasets
@@ -194,23 +214,42 @@ def create_dataloaders(train_benign, train_malignant, test_benign, test_malignan
         seed=42
     )
     
+    val_dataset = TripletMelanomaDataset(
+        val_benign, val_malignant,
+        transform=val_transform,
+        num_triplets=4000,
+        seed=123
+    )
+    
     test_dataset = TripletMelanomaDataset(
         test_benign, test_malignant,
         transform=test_transform,
         num_triplets=4000,
-        seed=123
+        seed=456
     )
+    
+    # Create generator for reproducible shuffling
     generator = torch.Generator()
     generator.manual_seed(42)
-    # Create dataloaders
+    
+    # Create dataloaders with deterministic settings
     train_loader = DataLoader(
         train_dataset, 
         batch_size=batch_size, 
         shuffle=True,
         num_workers=num_workers,
+        pin_memory=True,
         worker_init_fn=worker_init_fn,
-        generator=generator,
-        pin_memory=True
+        generator=generator
+    )
+    
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=True,
+        worker_init_fn=worker_init_fn
     )
     
     test_loader = DataLoader(
@@ -218,11 +257,13 @@ def create_dataloaders(train_benign, train_malignant, test_benign, test_malignan
         batch_size=batch_size,
         shuffle=False,
         num_workers=num_workers,
-        pin_memory=True
+        pin_memory=True,
+        worker_init_fn=worker_init_fn
     )
     
     print(f"\nDataloaders created:")
-    print(f"Train batches: {len(train_loader)}")
-    print(f"Test batches: {len(test_loader)}")
+    print(f"  Train batches: {len(train_loader)}")
+    print(f"  Val batches:   {len(val_loader)}")
+    print(f"  Test batches:  {len(test_loader)}")
     
-    return train_loader, test_loader
+    return train_loader, val_loader, test_loader
