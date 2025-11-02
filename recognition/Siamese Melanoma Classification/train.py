@@ -278,6 +278,7 @@ def evaluate(model, data_loader, device, desc='Evaluating'):
     }
 
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train Siamese Network for Melanoma Classification')
     
@@ -288,8 +289,10 @@ if __name__ == '__main__':
                         help='Path to metadata CSV')
     parser.add_argument('--sample_size', type=int, default=584,
                         help='Number of samples per class')
-    parser.add_argument('--train_ratio', type=float, default=0.8,
-                        help='Training data ratio')
+    parser.add_argument('--train_ratio', type=float, default=0.7,
+                        help='Training data ratio (default: 0.7 = 70%%)')
+    parser.add_argument('--val_ratio', type=float, default=0.15,
+                        help='Validation data ratio (default: 0.15 = 15%%)')
     
     # Model parameters
     parser.add_argument('--embedding_dim', type=int, default=256,
@@ -310,7 +313,7 @@ if __name__ == '__main__':
                         help='Learning rate for backbone')
     parser.add_argument('--weight_decay', type=float, default=1e-4,
                         help='Weight decay')
-    parser.add_argument('--patience', type=int, default=10,
+    parser.add_argument('--patience', type=int, default=7,
                         help='Early stopping patience')
     
     # Other parameters
