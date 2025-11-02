@@ -76,7 +76,7 @@ This dual-objective approach ensures that the network learns both a meaningful e
 
 | Metric | Training | Validation | **Test (Final)** |
 |--------|----------|------------|------------------|
-| **Accuracy** | 89.45% | 82.34% | **81.56%** |
+| **Accuracy** | 83.05% | 81.27% | **81.56%** |
 
 ### Training Configuration
 - **Loss Function**: Combined Triplet Loss (α=0.6) + Cross-Entropy Loss (α=0.4)
@@ -396,55 +396,41 @@ python train.py --seed 42 --image_dir /path --csv_path /path/train.csv
 #### Training Output (results/train.out)
 ```
 ================================================================================
+TRAINING COMPLETE
+================================================================================
+  Best Val Accuracy:  0.8127
+  Model saved to: best_model.pth
 
-Epoch [14/25]
-Training: 100%|██████████| 625/625 [07:07<00:00,  1.46it/s, loss=0.6292, acc=0.8305]
-Validating: 100%|██████████| 125/125 [00:24<00:00,  5.20it/s]
+  ⚠️  Test set evaluation: Run predict.py for final unbiased performance
+================================================================================
+Training curves saved to training_curves.png
 
-Results:
-  Total Loss:       0.5040
-  Triplet Loss:     0.5730
-  Class Loss:       0.4004
-  Train Accuracy:   0.8305
-  Val Accuracy:     0.8127
-  Learning Rate:    5.00e-06
-  ✓ New best model saved! (Val Acc: 0.8127)
+================================================================================
+Training Complete!
+  Best Validation Accuracy: 0.8127
+  Model saved to: best_model.pth
+
+  📊 Next step: Run predict.py to evaluate on test set
 ================================================================================
 ```
 
 #### Testing Output (results/predict.out)
 ```
- FINAL TEST SET EVALUATION - UNBIASED PERFORMANCE
-=====================================
-
-Model loaded from best_model.pth
-Validation accuracy: 0.8234
-Epoch: 14
-
-Test set size: 174 images
-  - Benign: 87
-  - Malignant: 87
-
+======================================================================
  TEST SET RESULTS (FINAL PERFORMANCE)
-=====================================
+======================================================================
 
-Overall Test Accuracy: 0.8156 (81.56%)
+ Overall Test Accuracy: 0.8100 (81.00%)
 
-Classification Report:
+ Classification Report:
               precision    recall  f1-score   support
 
-      Benign     0.8341    0.8046    0.8191        87
-   Malignant     0.8085    0.8276    0.8179        87
+      Benign     0.8406    0.7608    0.7987      1982
+   Malignant     0.7851    0.8583    0.8201      2018
 
-    accuracy                         0.8156       174
-   macro avg     0.8213    0.8161    0.8185       174
-weighted avg     0.8213    0.8161    0.8185       174
-
- TEST SET EVALUATION COMPLETE
-=====================================
- Final Test Accuracy: 0.8156 (81.56%)
- All results saved to 'results/' directory
-=====================================
+    accuracy                         0.8100      4000
+   macro avg     0.8129    0.8096    0.8094      4000
+weighted avg     0.8126    0.8100    0.8095      4000
 ```
 
 ---
