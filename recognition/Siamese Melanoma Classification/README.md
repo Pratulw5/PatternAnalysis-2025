@@ -462,8 +462,8 @@ melanoma-siamese-network/
 
 ### File Descriptions
 
-| File | Description | Lines of Code |
-|------|-------------|---------------|
+| File | Description | 
+|------|-------------|
 | `train.py` | Training loop, validation, model selection |
 | `predict.py` | Test evaluation, visualization, metrics | 
 | `dataset.py` | TripletDataset class, data augmentation, splits |
