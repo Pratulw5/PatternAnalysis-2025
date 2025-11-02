@@ -79,30 +79,36 @@ def train_epoch(model, train_loader, criterion, optimizer, scheduler, device):
 
 
 def train_model(config):
-    set_seed(config['seed'])
     """
     Main training function
     
     Args:
         config (dict): Training configuration
     """
+    # SET SEED FIRST - This is crucial for reproducibility
+    set_seed(config['seed'])
+    
     # Set device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}\n")
     
     # Load data
     print("Loading data...")
-    train_benign, train_malignant, test_benign, test_malignant = load_data_splits(
+    (train_benign, train_malignant, 
+     val_benign, val_malignant,
+     test_benign, test_malignant) = load_data_splits(
         config['image_dir'],
         config['csv_path'],
         sample_size=config['sample_size'],
         train_ratio=config['train_ratio'],
+        val_ratio=config['val_ratio'],
         seed=config['seed']
     )
     
     # Create dataloaders
-    train_loader, test_loader = create_dataloaders(
+    train_loader, val_loader, test_loader = create_dataloaders(
         train_benign, train_malignant, 
+        val_benign, val_malignant,
         test_benign, test_malignant,
         batch_size=config['batch_size'],
         num_workers=config['num_workers'],
@@ -146,15 +152,15 @@ def train_model(config):
         'train_triplet_loss': [],
         'train_class_loss': [],
         'train_acc': [],
-        'test_acc': []
+        'val_acc': []
     }
     
     # Training loop
-    best_acc = 0.0
+    best_val_acc = 0.0
     patience_counter = 0
     
     print("\nStarting training...\n")
-    print("=" * 70)
+    print("=" * 80)
     
     for epoch in range(config['num_epochs']):
         print(f"\nEpoch [{epoch+1}/{config['num_epochs']}]")
@@ -164,39 +170,39 @@ def train_model(config):
             model, train_loader, criterion, optimizer, scheduler, device
         )
         
-        # Evaluate
-        test_metrics = evaluate(model, test_loader, device)
+        # Validate 
+        val_metrics = evaluate(model, val_loader, device, desc='Validating')
         
         # Update history
         history['train_loss'].append(train_metrics['loss'])
         history['train_triplet_loss'].append(train_metrics['triplet_loss'])
         history['train_class_loss'].append(train_metrics['class_loss'])
         history['train_acc'].append(train_metrics['accuracy'])
-        history['test_acc'].append(test_metrics['accuracy'])
+        history['val_acc'].append(val_metrics['accuracy'])
         
         # Print metrics
         print(f"\nResults:")
-        print(f"  Total Loss: {train_metrics['loss']:.4f}")
-        print(f"  Triplet Loss: {train_metrics['triplet_loss']:.4f}")
-        print(f"  Classification Loss: {train_metrics['class_loss']:.4f}")
-        print(f"  Train Accuracy: {train_metrics['accuracy']:.4f}")
-        print(f"  Test Accuracy: {test_metrics['accuracy']:.4f}")
-        print(f"  Learning Rate: {optimizer.param_groups[0]['lr']:.2e}")
+        print(f"  Total Loss:       {train_metrics['loss']:.4f}")
+        print(f"  Triplet Loss:     {train_metrics['triplet_loss']:.4f}")
+        print(f"  Class Loss:       {train_metrics['class_loss']:.4f}")
+        print(f"  Train Accuracy:   {train_metrics['accuracy']:.4f}")
+        print(f"  Val Accuracy:     {val_metrics['accuracy']:.4f}")
+        print(f"  Learning Rate:    {optimizer.param_groups[0]['lr']:.2e}")
         
-        # Save best model
-        if test_metrics['accuracy'] > best_acc:
-            best_acc = test_metrics['accuracy']
+        # Save best model based on validation accuracy
+        if val_metrics['accuracy'] > best_val_acc:
+            best_val_acc = val_metrics['accuracy']
             patience_counter = 0
             
             torch.save({
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
-                'test_acc': test_metrics['accuracy'],
+                'val_acc': val_metrics['accuracy'],
                 'config': config
             }, config['save_path'])
             
-            print(f"  ✓ New best model saved! (Acc: {best_acc:.4f})")
+            print(f"  ✓ New best model saved! (Val Acc: {best_val_acc:.4f})")
         else:
             patience_counter += 1
         
@@ -205,20 +211,39 @@ def train_model(config):
             print(f"\nEarly stopping after {config['patience']} epochs without improvement")
             break
         
-        print("=" * 70)
+        print("=" * 80)
     
-    # Plot training curves
+    # Training complete - NO TEST EVALUATION HERE
+    print("\n" + "=" * 80)
+    print("TRAINING COMPLETE")
+    print("=" * 80)
+    print(f"  Best Val Accuracy:  {best_val_acc:.4f}")
+    print(f"  Model saved to: {config['save_path']}")
+    print(f"\n  ⚠️  Test set evaluation: Run predict.py for final unbiased performance")
+    print("=" * 80)
+    
+    # Plot training curves (ONLY train and val)
     plot_training_curves(history, save_path='training_curves.png')
-    print(f"\n{'='*70}")
+    
+    print(f"\n{'='*80}")
     print(f"Training Complete!")
-    print(f"Best Test Accuracy: {best_acc:.4f}")
-    print(f"Model saved to: {config['save_path']}")
-    print(f"{'='*70}\n")
+    print(f"  Best Validation Accuracy: {best_val_acc:.4f}")
+    print(f"  Model saved to: {config['save_path']}")
+    print(f"\n  📊 Next step: Run predict.py to evaluate on test set")
+    print(f"{'='*80}\n")
+    
+    return history
 
 
-def evaluate(model, test_loader, device):
+def evaluate(model, data_loader, device, desc='Evaluating'):
     """
-    Evaluate model on test set
+    Evaluate model on validation set
+    
+    Args:
+        model: Model to evaluate
+        data_loader: DataLoader for evaluation
+        device: torch device
+        desc (str): Description for progress bar
     
     Returns:
         dict: Evaluation metrics
@@ -230,7 +255,7 @@ def evaluate(model, test_loader, device):
     all_labels = []
     
     with torch.no_grad():
-        for anchor, positive, negative, labels in tqdm(test_loader, desc='Evaluating'):
+        for anchor, positive, negative, labels in tqdm(data_loader, desc=desc):
             anchor = anchor.to(device)
             labels = labels.to(device)
             
@@ -251,6 +276,7 @@ def evaluate(model, test_loader, device):
         'predictions': np.array(all_preds),
         'labels': np.array(all_labels)
     }
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train Siamese Network for Melanoma Classification')
@@ -284,7 +310,7 @@ if __name__ == '__main__':
                         help='Learning rate for backbone')
     parser.add_argument('--weight_decay', type=float, default=1e-4,
                         help='Weight decay')
-    parser.add_argument('--patience', type=int, default=7,
+    parser.add_argument('--patience', type=int, default=10,
                         help='Early stopping patience')
     
     # Other parameters
