@@ -389,25 +389,6 @@ python train.py --seed 42 --image_dir /path --csv_path /path/train.csv
 #### Comprehensive Results
 ![Test Results](images/test_results_comprehensive.png)
 
-**Description**: Final test set evaluation with three visualizations:
-
-**Left - Confusion Matrix**:
-- True Positives (Malignant correctly identified): 72
-- True Negatives (Benign correctly identified): 70
-- False Positives: 17
-- False Negatives: 15
-- Overall accuracy: 81.56%
-
-**Middle - Confidence Distribution**:
-- Blue histogram: Confidence scores for benign predictions
-- Red histogram: Confidence scores for malignant predictions
-- Most predictions have high confidence (>0.7)
-- Low overlap suggests good class separation
-
-**Right - Per-Class Accuracy**:
-- Benign: 80.46% (70/87 correct)
-- Malignant: 82.76% (72/87 correct)
-- Balanced performance across classes
 
 
 ### 3. Example Console Output
