@@ -76,7 +76,7 @@ This dual-objective approach ensures that the network learns both a meaningful e
 
 | Metric | Training | Validation | **Test (Final)** |
 |--------|----------|------------|------------------|
-| **Accuracy** | 83.05% | 81.27% | **81.56%** |
+| **Accuracy** | 83.05% | 81.27% | **81%** |
 
 ### Training Configuration
 - **Loss Function**: Combined Triplet Loss (α=0.6) + Cross-Entropy Loss (α=0.4)
@@ -87,9 +87,9 @@ This dual-objective approach ensures that the network learns both a meaningful e
 - **Epochs**: 25 (with early stopping, patience=7)
 - **Margin**: 1.0 (for triplet loss)
 ### Key Observations
-1. **Generalization**: Small gap between validation (82.34%) and test (81.56%) indicates good generalization
+1. **Generalization**: Small gap between validation (81.27%) and test (81.00%) indicates good generalization
 2. **Balanced Performance**: Similar precision and recall for both classes suggests no significant class bias
-3. **Overfitting Control**: Train accuracy (89.45%) vs validation (82.34%) shows controlled overfitting through regularization
+3. **Overfitting Control**: Train accuracy (83.05%) vs validation (81.27%) shows controlled overfitting through regularization
 
 ---
 
@@ -337,19 +337,17 @@ torch.backends.cudnn.benchmark = False
 - Seeded Kaiming initialization for new layers
 - Deterministic pre-trained weights from torchvision
 
-### Running Identical Experiments
+### Running Identical Experiments (default config)
 
 ```bash
 # Run 1
-python train.py --seed 42 --image_dir /path --csv_path /path/train.csv
+python train.py --image_dir /path --csv_path /path/train.csv
 
 # Run 2 (will produce IDENTICAL results)
-python train.py --seed 42 --image_dir /path --csv_path /path/train.csv
+python train.py --image_dir /path --csv_path /path/train.csv
 ```
 
 **Expected**: Both runs will produce the exact same validation accuracy at each epoch.
-
-**Note**: Setting `cudnn.deterministic=True` may reduce training speed by ~10-20% but ensures perfect reproducibility.
 
 ---
 
